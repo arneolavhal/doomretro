@@ -457,14 +457,17 @@ void I_GetEvent(void)
                 if (altdown && ev.data1 == KEY_TAB)
                     ev.data1 = ev.data2 = ev.data3 = 0;
 
-                if (!isdigit(ev.data2))
-                    idclev = idmus = false;
+				if ( ev.data2 >= 0 && ev.data2 <= 255 )
+				{
+	                if (!isdigit(ev.data2))
+		                idclev = idmus = false;
 
-                if (idbehold && keys[ev.data2])
-                {
-                    HU_clearMessages();
-                    idbehold = false;
-                }
+					if (idbehold && keys[ev.data2])
+					{
+						HU_clearMessages();
+						idbehold = false;
+					}
+				}
 
                 if (ev.data1)
                     D_PostEvent(&ev);
