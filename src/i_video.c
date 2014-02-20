@@ -145,6 +145,8 @@ static void SetWindowPositionVars(void);
 
 boolean MouseShouldBeGrabbed()
 {
+	return false; // AO: we never want to grab the mouse
+
     // if the window doesn't have focus, never grab it
 
     if (!window_focused)
@@ -194,7 +196,7 @@ static void UpdateFocus(void)
         else
         {
             alreadypaused = false;
-            sendpause = true;
+            //sendpause = true;
         }
     }
 }
