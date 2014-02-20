@@ -145,8 +145,6 @@ static void SetWindowPositionVars(void);
 
 boolean MouseShouldBeGrabbed()
 {
-	return false; // AO: we never want to grab the mouse
-
     // if the window doesn't have focus, never grab it
 
     if (!window_focused)
@@ -196,7 +194,7 @@ static void UpdateFocus(void)
         else
         {
             alreadypaused = false;
-            //sendpause = true;
+            //sendpause = true; // AO: don't pause when losing focus
         }
     }
 }
@@ -379,6 +377,8 @@ void I_ShutdownGraphics(void)
 
 static void UpdateMouseButtonState(unsigned int button, boolean on)
 {
+// AO: Disable mouse support
+#if 0
     event_t ev;
 
     if (button < SDL_BUTTON_LEFT || button > MAX_MOUSE_BUTTONS)
@@ -421,6 +421,7 @@ static void UpdateMouseButtonState(unsigned int button, boolean on)
     ev.data1 = mouse_button_state;
     ev.data2 = ev.data3 = 0;
     D_PostEvent(&ev);
+#endif
 }
 
 static int AccelerateMouse(int val)
@@ -579,6 +580,8 @@ static void CenterMouse(void)
 
 static void I_ReadMouse(void)
 {
+// AO: Disable mouse support
+#if 0
     int     x, y;
     event_t ev;
 
@@ -596,6 +599,7 @@ static void I_ReadMouse(void)
 
     if (MouseShouldBeGrabbed())
         CenterMouse();
+#endif
 }
 
 //
