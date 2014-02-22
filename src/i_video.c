@@ -222,14 +222,75 @@ static void SetShowCursor(boolean show)
 
 static int TranslateKey(SDL_keysym *sym)
 {
+	static char cmdMsg[80];
+
     switch (sym->sym)
     {
-        case SDLK_LEFT:        return KEY_LEFTARROW;
-        case SDLK_RIGHT:       return KEY_RIGHTARROW;
-        case SDLK_DOWN:        return KEY_DOWNARROW;
-        case SDLK_UP:          return KEY_UPARROW;
+        case SDLK_a:
+			if ( sym->mod & KMOD_SHIFT )
+			{
+				sprintf(cmdMsg, "CMD: SHIFT A");
+			}
+			else
+			{
+				sprintf(cmdMsg, "CMD: A");
+			}
+			players[consoleplayer].message = cmdMsg;
+			return KEY_LEFTARROW;
+        case SDLK_d:
+			if ( sym->mod & KMOD_SHIFT )
+			{
+				sprintf(cmdMsg, "CMD: SHIFT D");
+			}
+			else
+			{
+				sprintf(cmdMsg, "CMD: D");
+			}
+			players[consoleplayer].message = cmdMsg;
+			return KEY_RIGHTARROW;
+        case SDLK_s:
+			if ( sym->mod & KMOD_SHIFT )
+			{
+				sprintf(cmdMsg, "CMD: SHIFT S");
+			}
+			else
+			{
+				sprintf(cmdMsg, "CMD: S");
+			}
+			players[consoleplayer].message = cmdMsg;
+			return KEY_DOWNARROW;
+        case SDLK_w:
+			if ( sym->mod & KMOD_SHIFT )
+			{
+				sprintf(cmdMsg, "CMD: SHIFT W");
+			}
+			else
+			{
+				sprintf(cmdMsg, "CMD: W");
+			}
+			players[consoleplayer].message = cmdMsg;
+			return KEY_UPARROW;
+        case SDLK_LEFT:
+			sprintf(cmdMsg, "CMD: A");
+			players[consoleplayer].message = cmdMsg;
+			return KEY_LEFTARROW;
+        case SDLK_RIGHT:
+			sprintf(cmdMsg, "CMD: D");
+			players[consoleplayer].message = cmdMsg;
+			return KEY_RIGHTARROW;
+        case SDLK_DOWN:
+			sprintf(cmdMsg, "CMD: S");
+			players[consoleplayer].message = cmdMsg;
+			return KEY_DOWNARROW;
+        case SDLK_UP:
+			sprintf(cmdMsg, "CMD: W");
+			players[consoleplayer].message = cmdMsg;
+			return KEY_UPARROW;
         case SDLK_ESCAPE:      return KEY_ESCAPE;
-        case SDLK_RETURN:      return KEY_ENTER;
+        case SDLK_RETURN:
+			sprintf(cmdMsg, "CMD: ENTER");
+			players[consoleplayer].message = cmdMsg;
+			return KEY_ENTER;
         case SDLK_TAB:         return KEY_TAB;
         case SDLK_F1:          return KEY_F1;
         case SDLK_F2:          return KEY_F2;
@@ -251,7 +312,10 @@ static int TranslateKey(SDL_keysym *sym)
         case SDLK_LSHIFT:
         case SDLK_RSHIFT:      return KEY_RSHIFT;
         case SDLK_LCTRL:
-        case SDLK_RCTRL:       return KEY_RCTRL;
+        case SDLK_RCTRL:
+			sprintf(cmdMsg, "CMD: FIRE");
+			players[consoleplayer].message = cmdMsg;
+			return KEY_RCTRL;
         case SDLK_LALT:
         case SDLK_RALT:
         case SDLK_LMETA:
@@ -284,6 +348,38 @@ static int TranslateKey(SDL_keysym *sym)
         case SDLK_PAGEDOWN:    return KEY_PGDN;
         case SDLK_PRINT:       return KEY_PRINT;
         case SDLK_NUMLOCK:     return KEY_NUMLOCK;
+		case SDLK_SPACE:
+			sprintf(cmdMsg, "CMD: SPACE");
+			players[consoleplayer].message = cmdMsg;
+			return tolower(sym->sym);
+		case SDLK_1:
+			sprintf(cmdMsg, "CMD: 1");
+			players[consoleplayer].message = cmdMsg;
+			return tolower(sym->sym);
+		case SDLK_2:
+			sprintf(cmdMsg, "CMD: 2");
+			players[consoleplayer].message = cmdMsg;
+			return tolower(sym->sym);
+		case SDLK_3:
+			sprintf(cmdMsg, "CMD: 3");
+			players[consoleplayer].message = cmdMsg;
+			return tolower(sym->sym);
+		case SDLK_4:
+			sprintf(cmdMsg, "CMD: 4");
+			players[consoleplayer].message = cmdMsg;
+			return tolower(sym->sym);
+		case SDLK_5:
+			sprintf(cmdMsg, "CMD: 5");
+			players[consoleplayer].message = cmdMsg;
+			return tolower(sym->sym);
+		case SDLK_6:
+			sprintf(cmdMsg, "CMD: 6");
+			players[consoleplayer].message = cmdMsg;
+			return tolower(sym->sym);
+		case SDLK_7:
+			sprintf(cmdMsg, "CMD: 7");
+			players[consoleplayer].message = cmdMsg;
+			return tolower(sym->sym);
         default:               return tolower(sym->sym);
     }
 }

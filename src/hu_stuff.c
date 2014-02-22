@@ -289,9 +289,10 @@ void HU_Ticker(void)
         && message_counter
         && !--message_counter)
     {
-        message_on = false;
-        message_nottobefuckedwith = false;
-        message_dontpause = false;
+		// AO: always show the last command
+        //message_on = false;
+        //message_nottobefuckedwith = false;
+        //message_dontpause = false;
     }
 
     if (idbehold)
