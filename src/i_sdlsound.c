@@ -471,9 +471,12 @@ static int GetSliceSize(void)
 
 static boolean I_SDL_InitSound(void)
 {
-    int i;
-
-    // No sounds yet
+#if 1
+	const char *desiredDevice = "Line 1 (Virtual Audio Cable)";
+    int audioDeviceIndex = 0;
+#endif
+	int i;
+    // No sounds 
 
     for (i = 0; i < NUMSFX; ++i)
         sound_chunks[i].abuf = NULL;
@@ -486,6 +489,18 @@ static boolean I_SDL_InitSound(void)
         fprintf(stderr, "Unable to set up sound.\n");
         return false;
     }
+
+#if 1
+	for (i = 0; i < SDL_GetNumAudioDevices(0); ++i) {
+		printf("Audio device %d: %s\n", i, SDL_GetAudioDeviceName(i, 0));
+		if ( stricmp( SDL_GetAudioDeviceName(i, 0), desiredDevice ) == 0 )
+		{
+			audioDeviceIndex = i;
+			break;
+		}
+
+	}
+#endif
 
     if (Mix_OpenAudio(snd_samplerate, AUDIO_S16SYS, 2, GetSliceSize()) < 0)
     {
