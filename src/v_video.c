@@ -592,6 +592,8 @@ extern boolean nerve;
 char lbmname[256];
 char lbmpath[256];
 
+extern SDL_Window *sdl_window;
+
 boolean V_ScreenShot(void)
 {
     char mapname[128];
@@ -621,5 +623,8 @@ boolean V_ScreenShot(void)
     }
     while (M_FileExists(lbmpath));
 
-    return (!SDL_SaveBMP(SDL_GetVideoSurface(), lbmpath));
+	// ao: this working?
+	return !SDL_SaveBMP(SDL_GetWindowSurface(sdl_window), lbmpath);
+//#error SDL_GetVideoSurface fix required for saving screenshot
+//    return (!SDL_SaveBMP(SDL_GetVideoSurface(), lbmpath));
 }

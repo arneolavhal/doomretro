@@ -599,10 +599,13 @@ void AM_maxOutWindowScale(void)
 
 static boolean AM_getSpeedToggle(void)
 {
-    SDLMod modstate = SDL_GetModState();
+//#error SDLMod -> SDL_Keymod fix for return of SDL_GetModState
+//    SDLMod modstate = SDL_GetModState();
+	// ao: AM_getSpeedToggle
+	SDL_Keymod modstate = SDL_GetModState();
     boolean lt = (gamepadbuttons & GAMEPAD_LEFT_TRIGGER);
     boolean caps = (modstate & KMOD_CAPS);
-    boolean shift = (modstate & KMOD_SHIFT);
+    boolean shift = (modstate & (KMOD_LSHIFT | KMOD_RSHIFT ));
 
     return ((lt ? 1 : 0) + (caps ? 1 : 0) + (shift ? 1 : 0) == 1);
 }
@@ -615,7 +618,10 @@ boolean AM_Responder(event_t *ev)
     int key;
     int rc = false;
     static boolean backbuttondown = false;
-    SDLMod modstate = SDL_GetModState();
+//#error SDLMod -> SDL_Keymod fix for return of SDL_GetModState
+//    SDLMod modstate = SDL_GetModState();
+	// ao: test AM_Responder modstate
+	SDL_Keymod modstate = SDL_GetModState();
     boolean speedtoggle;
     static int markpress = 0;
 

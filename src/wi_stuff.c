@@ -1542,10 +1542,13 @@ void WI_checkForAccelerate(void)
     {
         if (playeringame[i] && !menuactive)
         {
-            Uint8 *keystate = SDL_GetKeyState(NULL);
+//error SDL_GetKeyState() has been renamed to SDL_GetKeyboardState(). The returned array should now be indexed by SDL_SCANCODE_* values (see SDL_Scancode) instead of SDL_Keysym values. https://wiki.libsdl.org/MigrationGuide
+//            Uint8 *keystate = SDL_GetKeyState(NULL);
+			// ao: WI_checkForAccelerate working?
+			const Uint8 *keystate = SDL_GetKeyboardState(NULL);
 
             if ((player->cmd.buttons & BT_ATTACK)
-                || keystate[SDLK_RETURN] || keystate[SDLK_KP_ENTER])
+                || keystate[SDL_SCANCODE_RETURN] || keystate[SDL_SCANCODE_KP_ENTER])
             {
                 if (!player->attackdown)
                     acceleratestage = 1;

@@ -46,7 +46,10 @@ along with DOOM RETRO. If not, see http://www.gnu.org/licenses/.
 
 char *windowposition = "";
 
-static SDL_Surface *screen;
+static SDL_Surface *screen = NULL;
+SDL_Window *sdl_window = NULL;
+static SDL_Renderer *sdl_renderer = NULL;
+static SDL_Texture *sdl_texture = NULL;
 
 // Intermediate 8-bit buffer that we draw to instead of 'screen'.
 // This is used when we are rendering in 32-bit screen mode.
@@ -175,17 +178,19 @@ boolean MouseShouldBeGrabbed()
 
 static void UpdateFocus(void)
 {
-    Uint8          state = SDL_GetAppState();
+//#error SDL_GetAppState() -> SDL_GetWindowFlags()
+	Uint32 state = SDL_GetWindowFlags(sdl_window);
+	//Uint8          state = SDL_GetAppState();
     static boolean alreadypaused = false;
 
     // Should the screen be grabbed?
 
-    screenvisible = (state & SDL_APPACTIVE);
+    screenvisible = (state & SDL_WINDOW_SHOWN); // changed from SDL_APPACTIVE);
 
     // We should have input (keyboard) focus and be visible
     // (not minimized)
 
-    window_focused = ((state & SDL_APPINPUTFOCUS) && screenvisible);
+    window_focused = ((state & SDL_WINDOW_INPUT_FOCUS) && screenvisible);
 
     if (!window_focused && !menuactive && gamestate == GS_LEVEL && !demoplayback && !advancedemo)
     {
@@ -213,20 +218,21 @@ static void SetShowCursor(boolean show)
 
     // When the cursor is hidden, grab the input.
 
-    SDL_WM_GrabInput((SDL_GrabMode)!show);
+	SDL_SetRelativeMouseMode(!show);
+    //SDL_WM_GrabInput((SDL_GrabMode)!show);
 }
 
 //
 // Translates the SDL key
 //
 
-static int TranslateKey(SDL_keysym *sym)
+static int TranslateKey(SDL_Keysym *sym)
 {
 	static char cmdMsg[80];
 
-    switch (sym->sym)
+    switch (sym->scancode)
     {
-        case SDLK_a:
+	case SDL_SCANCODE_A:
 			if ( sym->mod & KMOD_SHIFT )
 			{
 				sprintf(cmdMsg, "CMD: SHIFT A");
@@ -237,7 +243,7 @@ static int TranslateKey(SDL_keysym *sym)
 			}
 			players[consoleplayer].message = cmdMsg;
 			return KEY_LEFTARROW;
-        case SDLK_d:
+        case SDL_SCANCODE_D:
 			if ( sym->mod & KMOD_SHIFT )
 			{
 				sprintf(cmdMsg, "CMD: SHIFT D");
@@ -248,7 +254,7 @@ static int TranslateKey(SDL_keysym *sym)
 			}
 			players[consoleplayer].message = cmdMsg;
 			return KEY_RIGHTARROW;
-        case SDLK_s:
+        case SDL_SCANCODE_S:
 			if ( sym->mod & KMOD_SHIFT )
 			{
 				sprintf(cmdMsg, "CMD: SHIFT S");
@@ -259,7 +265,7 @@ static int TranslateKey(SDL_keysym *sym)
 			}
 			players[consoleplayer].message = cmdMsg;
 			return KEY_DOWNARROW;
-        case SDLK_w:
+        case SDL_SCANCODE_W:
 			if ( sym->mod & KMOD_SHIFT )
 			{
 				sprintf(cmdMsg, "CMD: SHIFT W");
@@ -270,117 +276,115 @@ static int TranslateKey(SDL_keysym *sym)
 			}
 			players[consoleplayer].message = cmdMsg;
 			return KEY_UPARROW;
-        case SDLK_LEFT:
+        case SDL_SCANCODE_LEFT:
 			sprintf(cmdMsg, "CMD: A");
 			players[consoleplayer].message = cmdMsg;
 			return KEY_LEFTARROW;
-        case SDLK_RIGHT:
+        case SDL_SCANCODE_RIGHT:
 			sprintf(cmdMsg, "CMD: D");
 			players[consoleplayer].message = cmdMsg;
 			return KEY_RIGHTARROW;
-        case SDLK_DOWN:
+        case SDL_SCANCODE_DOWN:
 			sprintf(cmdMsg, "CMD: S");
 			players[consoleplayer].message = cmdMsg;
 			return KEY_DOWNARROW;
-        case SDLK_UP:
+        case SDL_SCANCODE_UP:
 			sprintf(cmdMsg, "CMD: W");
 			players[consoleplayer].message = cmdMsg;
 			return KEY_UPARROW;
-        case SDLK_ESCAPE:      return KEY_ESCAPE;
-        case SDLK_RETURN:
+        case SDL_SCANCODE_ESCAPE:      return KEY_ESCAPE;
+        case SDL_SCANCODE_RETURN:
 			sprintf(cmdMsg, "CMD: ENTER");
 			players[consoleplayer].message = cmdMsg;
 			return KEY_ENTER;
-        case SDLK_TAB:         return KEY_TAB;
-        case SDLK_F1:          return KEY_F1;
-        case SDLK_F2:          return KEY_F2;
-        case SDLK_F3:          return KEY_F3;
-        case SDLK_F4:          return KEY_F4;
-        case SDLK_F5:          return KEY_F5;
-        case SDLK_F6:          return KEY_F6;
-        case SDLK_F7:          return KEY_F7;
-        case SDLK_F8:          return KEY_F8;
-        case SDLK_F9:          return KEY_F9;
-        case SDLK_F10:         return KEY_F10;
-        case SDLK_F11:         return KEY_F11;
-        case SDLK_F12:         return KEY_F12;
-        case SDLK_BACKSPACE:   return KEY_BACKSPACE;
-        case SDLK_DELETE:      return KEY_DEL;
-        case SDLK_PAUSE:       return KEY_PAUSE;
-        case SDLK_EQUALS:      return KEY_EQUALS;
-        case SDLK_MINUS:       return KEY_MINUS;
-        case SDLK_LSHIFT:
-        case SDLK_RSHIFT:      return KEY_RSHIFT;
-        case SDLK_LCTRL:
-        case SDLK_RCTRL:
+        case SDL_SCANCODE_TAB:         return KEY_TAB;
+        case SDL_SCANCODE_F1:          return KEY_F1;
+        case SDL_SCANCODE_F2:          return KEY_F2;
+        case SDL_SCANCODE_F3:          return KEY_F3;
+        case SDL_SCANCODE_F4:          return KEY_F4;
+        case SDL_SCANCODE_F5:          return KEY_F5;
+        case SDL_SCANCODE_F6:          return KEY_F6;
+        case SDL_SCANCODE_F7:          return KEY_F7;
+        case SDL_SCANCODE_F8:          return KEY_F8;
+        case SDL_SCANCODE_F9:          return KEY_F9;
+        case SDL_SCANCODE_F10:         return KEY_F10;
+        case SDL_SCANCODE_F11:         return KEY_F11;
+        case SDL_SCANCODE_F12:         return KEY_F12;
+        case SDL_SCANCODE_BACKSPACE:   return KEY_BACKSPACE;
+        case SDL_SCANCODE_DELETE:      return KEY_DEL;
+        case SDL_SCANCODE_PAUSE:       return KEY_PAUSE;
+        case SDL_SCANCODE_EQUALS:      return KEY_EQUALS;
+        case SDL_SCANCODE_MINUS:       return KEY_MINUS;
+        case SDL_SCANCODE_LSHIFT:
+        case SDL_SCANCODE_RSHIFT:      return KEY_RSHIFT;
+        case SDL_SCANCODE_LCTRL:
+        case SDL_SCANCODE_RCTRL:
 			sprintf(cmdMsg, "CMD: FIRE");
 			players[consoleplayer].message = cmdMsg;
 			return KEY_RCTRL;
-        case SDLK_LALT:
-        case SDLK_RALT:
-        case SDLK_LMETA:
-        case SDLK_RMETA:       return KEY_RALT;
-        case SDLK_LSUPER:
-        case SDLK_RSUPER:      return 0;
-        case SDLK_CAPSLOCK:    return KEY_CAPSLOCK;
-        case SDLK_SCROLLOCK:   return KEY_SCRLCK;
-        case SDLK_KP0:         return KEYP_0;
-        case SDLK_KP1:         return KEYP_1;
-        case SDLK_KP2:         return KEYP_2;
-        case SDLK_KP3:         return KEYP_3;
-        case SDLK_KP4:         return KEYP_4;
-        case SDLK_KP5:         return KEYP_5;
-        case SDLK_KP6:         return KEYP_6;
-        case SDLK_KP7:         return KEYP_7;
-        case SDLK_KP8:         return KEYP_8;
-        case SDLK_KP9:         return KEYP_9;
-        case SDLK_KP_PERIOD:   return KEYP_PERIOD;
-        case SDLK_KP_MULTIPLY: return KEYP_MULTIPLY;
-        case SDLK_KP_PLUS:     return KEYP_PLUS;
-        case SDLK_KP_MINUS:    return KEYP_MINUS;
-        case SDLK_KP_DIVIDE:   return KEYP_DIVIDE;
-        case SDLK_KP_EQUALS:   return KEYP_EQUALS;
-        case SDLK_KP_ENTER:    return KEYP_ENTER;
-        case SDLK_HOME:        return KEY_HOME;
-        case SDLK_INSERT:      return KEY_INS;
-        case SDLK_END:         return KEY_END;
-        case SDLK_PAGEUP:      return KEY_PGUP;
-        case SDLK_PAGEDOWN:    return KEY_PGDN;
-        case SDLK_PRINT:       return KEY_PRINT;
-        case SDLK_NUMLOCK:     return KEY_NUMLOCK;
-		case SDLK_SPACE:
+        case SDL_SCANCODE_LALT:
+		case SDL_SCANCODE_RALT:			return KEY_RALT;
+        case SDL_SCANCODE_LGUI:
+        case SDL_SCANCODE_RGUI:			return 0;
+        case SDL_SCANCODE_CAPSLOCK:		return KEY_CAPSLOCK;
+		case SDL_SCANCODE_SCROLLLOCK:   return KEY_SCRLCK;
+        case SDL_SCANCODE_KP_0:         return KEYP_0;
+        case SDL_SCANCODE_KP_1:         return KEYP_1;
+        case SDL_SCANCODE_KP_2:         return KEYP_2;
+        case SDL_SCANCODE_KP_3:         return KEYP_3;
+        case SDL_SCANCODE_KP_4:         return KEYP_4;
+        case SDL_SCANCODE_KP_5:         return KEYP_5;
+        case SDL_SCANCODE_KP_6:         return KEYP_6;
+        case SDL_SCANCODE_KP_7:         return KEYP_7;
+        case SDL_SCANCODE_KP_8:         return KEYP_8;
+        case SDL_SCANCODE_KP_9:         return KEYP_9;
+        case SDL_SCANCODE_KP_PERIOD:   return KEYP_PERIOD;
+        case SDL_SCANCODE_KP_MULTIPLY: return KEYP_MULTIPLY;
+        case SDL_SCANCODE_KP_PLUS:     return KEYP_PLUS;
+        case SDL_SCANCODE_KP_MINUS:    return KEYP_MINUS;
+        case SDL_SCANCODE_KP_DIVIDE:   return KEYP_DIVIDE;
+        case SDL_SCANCODE_KP_EQUALS:   return KEYP_EQUALS;
+        case SDL_SCANCODE_KP_ENTER:    return KEYP_ENTER;
+        case SDL_SCANCODE_HOME:        return KEY_HOME;
+        case SDL_SCANCODE_INSERT:      return KEY_INS;
+        case SDL_SCANCODE_END:         return KEY_END;
+        case SDL_SCANCODE_PAGEUP:      return KEY_PGUP;
+        case SDL_SCANCODE_PAGEDOWN:    return KEY_PGDN;
+        case SDL_SCANCODE_PRINTSCREEN: return KEY_PRINT;
+        case SDL_SCANCODE_NUMLOCKCLEAR:return KEY_NUMLOCK;
+		case SDL_SCANCODE_SPACE:
 			sprintf(cmdMsg, "CMD: SPACE");
 			players[consoleplayer].message = cmdMsg;
 			return tolower(sym->sym);
-		case SDLK_1:
+		case SDL_SCANCODE_1:
 			sprintf(cmdMsg, "CMD: 1");
 			players[consoleplayer].message = cmdMsg;
 			return tolower(sym->sym);
-		case SDLK_2:
+		case SDL_SCANCODE_2:
 			sprintf(cmdMsg, "CMD: 2");
 			players[consoleplayer].message = cmdMsg;
 			return tolower(sym->sym);
-		case SDLK_3:
+		case SDL_SCANCODE_3:
 			sprintf(cmdMsg, "CMD: 3");
 			players[consoleplayer].message = cmdMsg;
 			return tolower(sym->sym);
-		case SDLK_4:
+		case SDL_SCANCODE_4:
 			sprintf(cmdMsg, "CMD: 4");
 			players[consoleplayer].message = cmdMsg;
 			return tolower(sym->sym);
-		case SDLK_5:
+		case SDL_SCANCODE_5:
 			sprintf(cmdMsg, "CMD: 5");
 			players[consoleplayer].message = cmdMsg;
 			return tolower(sym->sym);
-		case SDLK_6:
+		case SDL_SCANCODE_6:
 			sprintf(cmdMsg, "CMD: 6");
 			players[consoleplayer].message = cmdMsg;
 			return tolower(sym->sym);
-		case SDLK_7:
+		case SDL_SCANCODE_7:
 			sprintf(cmdMsg, "CMD: 7");
 			players[consoleplayer].message = cmdMsg;
 			return tolower(sym->sym);
-        default:               return tolower(sym->sym);
+		default:               return tolower(sym->sym);
     }
 }
 
@@ -388,54 +392,54 @@ int TranslateKey2(int key)
 {
     switch (key)
     {
-        case KEY_LEFTARROW:    return SDLK_LEFT;
-        case KEY_RIGHTARROW:   return SDLK_RIGHT;
-        case KEY_DOWNARROW:    return SDLK_DOWN;
-        case KEY_UPARROW:      return SDLK_UP;
-        case KEY_ESCAPE:       return SDLK_ESCAPE;
-        case KEY_ENTER:        return SDLK_RETURN;
-        case KEY_TAB:          return SDLK_TAB;
-        case KEY_F1:           return SDLK_F1;
-        case KEY_F2:           return SDLK_F2;
-        case KEY_F3:           return SDLK_F3;
-        case KEY_F4:           return SDLK_F4;
-        case KEY_F5:           return SDLK_F5;
-        case KEY_F6:           return SDLK_F6;
-        case KEY_F7:           return SDLK_F7;
-        case KEY_F8:           return SDLK_F8;
-        case KEY_F9:           return SDLK_F9;
-        case KEY_F10:          return SDLK_F10;
-        case KEY_F11:          return SDLK_F11;
-        case KEY_F12:          return SDLK_F12;
-        case KEY_BACKSPACE:    return SDLK_BACKSPACE;
-        case KEY_DEL:          return SDLK_DELETE;
-        case KEY_PAUSE:        return SDLK_PAUSE;
-        case KEY_EQUALS:       return SDLK_EQUALS;
-        case KEY_MINUS:        return SDLK_MINUS;
-        case KEY_RSHIFT:       return SDLK_RSHIFT;
-        case KEY_RCTRL:        return SDLK_RCTRL;
-        case KEY_RALT:         return SDLK_RALT;
-        case KEY_CAPSLOCK:     return SDLK_CAPSLOCK;
-        case KEY_SCRLCK:       return SDLK_SCROLLOCK;
-        case KEYP_0:           return SDLK_KP0;
-        case KEYP_1:           return SDLK_KP1;
-        case KEYP_3:           return SDLK_KP3;
-        case KEYP_5:           return SDLK_KP5;
-        case KEYP_7:           return SDLK_KP7;
-        case KEYP_9:           return SDLK_KP9;
-        case KEYP_PERIOD:      return SDLK_KP_PERIOD;
-        case KEYP_MULTIPLY:    return SDLK_KP_MULTIPLY;
-        case KEYP_DIVIDE:      return SDLK_KP_DIVIDE;
-        case KEY_INS:          return SDLK_INSERT;
-        case KEY_PRINT:        return SDLK_PRINT;
-        case KEY_NUMLOCK:      return SDLK_NUMLOCK;
+        case KEY_LEFTARROW:    return SDL_SCANCODE_LEFT;
+        case KEY_RIGHTARROW:   return SDL_SCANCODE_RIGHT;
+        case KEY_DOWNARROW:    return SDL_SCANCODE_DOWN;
+        case KEY_UPARROW:      return SDL_SCANCODE_UP;
+        case KEY_ESCAPE:       return SDL_SCANCODE_ESCAPE;
+        case KEY_ENTER:        return SDL_SCANCODE_RETURN;
+        case KEY_TAB:          return SDL_SCANCODE_TAB;
+        case KEY_F1:           return SDL_SCANCODE_F1;
+        case KEY_F2:           return SDL_SCANCODE_F2;
+        case KEY_F3:           return SDL_SCANCODE_F3;
+        case KEY_F4:           return SDL_SCANCODE_F4;
+        case KEY_F5:           return SDL_SCANCODE_F5;
+        case KEY_F6:           return SDL_SCANCODE_F6;
+        case KEY_F7:           return SDL_SCANCODE_F7;
+        case KEY_F8:           return SDL_SCANCODE_F8;
+        case KEY_F9:           return SDL_SCANCODE_F9;
+        case KEY_F10:          return SDL_SCANCODE_F10;
+        case KEY_F11:          return SDL_SCANCODE_F11;
+        case KEY_F12:          return SDL_SCANCODE_F12;
+        case KEY_BACKSPACE:    return SDL_SCANCODE_BACKSPACE;
+        case KEY_DEL:          return SDL_SCANCODE_DELETE;
+        case KEY_PAUSE:        return SDL_SCANCODE_PAUSE;
+        case KEY_EQUALS:       return SDL_SCANCODE_EQUALS;
+        case KEY_MINUS:        return SDL_SCANCODE_MINUS;
+        case KEY_RSHIFT:       return SDL_SCANCODE_RSHIFT;
+        case KEY_RCTRL:        return SDL_SCANCODE_RCTRL;
+        case KEY_RALT:         return SDL_SCANCODE_RALT;
+        case KEY_CAPSLOCK:     return SDL_SCANCODE_CAPSLOCK;
+		case KEY_SCRLCK:       return SDL_SCANCODE_SCROLLLOCK;
+		case KEYP_0:           return SDL_SCANCODE_KP_0;
+        case KEYP_1:           return SDL_SCANCODE_KP_1;
+        case KEYP_3:           return SDL_SCANCODE_KP_3;
+        case KEYP_5:           return SDL_SCANCODE_KP_5;
+        case KEYP_7:           return SDL_SCANCODE_KP_7;
+        case KEYP_9:           return SDL_SCANCODE_KP_9;
+        case KEYP_PERIOD:      return SDL_SCANCODE_KP_PERIOD;
+        case KEYP_MULTIPLY:    return SDL_SCANCODE_KP_MULTIPLY;
+        case KEYP_DIVIDE:      return SDL_SCANCODE_KP_DIVIDE;
+        case KEY_INS:          return SDL_SCANCODE_INSERT;
+		case KEY_PRINT:        return SDL_SCANCODE_PRINTSCREEN;
+		case KEY_NUMLOCK:      return SDL_SCANCODE_NUMLOCKCLEAR;
         default:               return key;
     }
 }
 
 boolean keystate(int key)
 {
-    Uint8 *keystate = SDL_GetKeyState(NULL);
+	const Uint8 *keystate = SDL_GetKeyboardState(NULL);
 
     return keystate[TranslateKey2(key)];
 }
@@ -444,14 +448,17 @@ void I_SaveWindowPosition(void)
 {
     if (!fullscreen)
     {
-        static SDL_SysWMinfo pInfo;
-        RECT r;
+		if ( sdl_window != NULL )
+		{
+			static SDL_SysWMinfo pInfo;
+			RECT r;
 
-        SDL_VERSION(&pInfo.version);
-        SDL_GetWMInfo(&pInfo);
+			SDL_VERSION(&pInfo.version);
+			SDL_GetWindowWMInfo(sdl_window,&pInfo);
 
-        GetWindowRect(pInfo.window, &r);
-        sprintf(windowposition, "%i,%i", r.left + 8, r.top + 30);
+			GetWindowRect(pInfo.info.win.window, &r);
+			sprintf(windowposition, "%i,%i", r.left + 8, r.top + 30);
+		}
     }
 }
 
@@ -624,33 +631,37 @@ void I_GetEvent(void)
                     M_QuitDOOM();
                 }
                 break;
-
-            case SDL_ACTIVEEVENT:
-                // need to update our focus state
-                UpdateFocus();
-                break;
-
-            case SDL_VIDEOEXPOSE:
-                palette_to_set = true;
-                break;
-
             case SDL_SYSWMEVENT:
-                if (sdlevent.syswm.msg->msg == WM_MOVE)
+				if (sdlevent.syswm.msg->msg.win.msg == WM_MOVE)
                 {
                     I_SaveWindowPosition();
                     SetWindowPositionVars();
                     M_SaveDefaults();
                 }
                 break;
-
-            case SDL_VIDEORESIZE:
-                if (!fullscreen)
-                {
-                    need_resize = true;
-                    resize_h = sdlevent.resize.h;
-                    break;
-                }
-
+			case SDL_WINDOWEVENT:
+				{
+					switch (sdlevent.window.event)
+					{
+					case SDL_WINDOWEVENT_FOCUS_GAINED:
+					case SDL_WINDOWEVENT_FOCUS_LOST:
+						// need to update our focus state
+						UpdateFocus();
+						break;
+					case SDL_WINDOWEVENT_EXPOSED:
+						palette_to_set = true;
+						break;
+					case SDL_WINDOWEVENT_RESIZED:
+						if (!fullscreen)
+						{
+							need_resize = true;
+							resize_h = sdlevent.window.data2;
+							break;
+						}
+						break;
+					}
+				}
+				break;
             default:
                 break;
         }
@@ -663,7 +674,7 @@ static void CenterMouse(void)
 {
     // Warp the the screen center
 
-    SDL_WarpMouse(screen->w / 2, screen->h / 2);
+	SDL_WarpMouseInWindow( sdl_window, screen->w / 2, screen->h / 2);
 
     // Clear any relative movement caused by warping
 
@@ -724,7 +735,7 @@ static void UpdateGrab(void)
     else if (!grab && currently_grabbed)
     {
         SetShowCursor(true);
-        SDL_WarpMouse(screen->w - 16, screen->h - 16);
+		SDL_WarpMouseInWindow(sdl_window, screen->w - 16, screen->h - 16);
         SDL_GetRelativeMouseState(NULL, NULL);
     }
 
@@ -757,6 +768,9 @@ SDL_Rect dest_rect;
 //
 void I_FinishUpdate(void)
 {
+	const char *errorStr;
+	static SDL_Texture *blah;
+
     if (need_resize)
     {
         ApplyWindowResize(resize_h);
@@ -775,12 +789,32 @@ void I_FinishUpdate(void)
 
     if (palette_to_set)
     {
-        SDL_SetColors(screenbuffer, palette, 0, 256);
+		SDL_SetPaletteColors(screenbuffer->format->palette, palette, 0, 256);
+		if ( sdl_texture != NULL )
+		{
+			SDL_DestroyTexture( sdl_texture );
+		}
+		sdl_texture = SDL_CreateTextureFromSurface( sdl_renderer, screenbuffer );
+				
+        //SDL_SetColors(screenbuffer, palette, 0, 256);
         palette_to_set = false;
     }
 
     // draw to screen
+	errorStr = SDL_GetError();
+#if 1
+    if (SDL_LockSurface(screenbuffer) >= 0)
+    {
+        blit();
+        SDL_UnlockSurface(screenbuffer);
+    }
 
+	SDL_BlitSurface( screenbuffer, NULL, screen, NULL );
+	SDL_UpdateTexture(sdl_texture, NULL, screen->pixels, screen->pitch);
+	SDL_RenderClear(sdl_renderer);
+	SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+	SDL_RenderPresent(sdl_renderer);
+#else
     if (SDL_LockSurface(screenbuffer) >= 0)
     {
         blit();
@@ -789,9 +823,15 @@ void I_FinishUpdate(void)
 
     SDL_FillRect(screen, NULL, 0);
 
-    SDL_BlitSurface(screenbuffer, NULL, screen, &dest_rect);
+//#error At this point, your 1.2 game had a bunch of SDL_Surfaces, which it would SDL_BlitSurface() to the screen surface to compose the final framebuffer, and eventually SDL_Flip() to the screen. For SDL 2.0, you have a bunch of SDL_Textures, that you will SDL_RenderCopy() to your Renderer to compose the final framebuffer, and eventually SDL_RenderPresent() to the screen. It's that simple. If these textures never need modification, you might find your framerate has just gone through the roof, too.
+	// ao: test does this actually still work in SDL 2?
+    //SDL_BlitSurface(screenbuffer, NULL, screen, &dest_rect);
+	SDL_RenderCopy(sdl_renderer,sdl_texture,NULL,NULL);
 
+//#error SDL_UpdateRect()/SDL_Flip(): use SDL_RenderPresent() instead
     SDL_Flip(screen);
+	assert( false ); // ao: test
+#endif
 }
 
 //
@@ -814,6 +854,7 @@ void I_SetPalette(byte *doompalette)
         palette[i].r = gammatable[usegamma][*doompalette++];
         palette[i].g = gammatable[usegamma][*doompalette++];
         palette[i].b = gammatable[usegamma][*doompalette++];
+		palette[i].a = 255;
     }
 
     palette_to_set = true;
@@ -852,10 +893,17 @@ static void SetWindowPositionVars(void)
 
 static void SetVideoMode(void)
 {
-    SDL_VideoInfo *videoinfo = (SDL_VideoInfo *)SDL_GetVideoInfo();
+//#error SDL_VideoInfo: use SDL_GetRendererInfo()/SDL_GetRenderDriverInfo() instead
+//    SDL_VideoInfo *videoinfo = (SDL_VideoInfo *)SDL_GetVideoInfo();
+    //desktopwidth = videoinfo->current_w;
+    //desktopheight = videoinfo->current_h;
 
-    desktopwidth = videoinfo->current_w;
-    desktopheight = videoinfo->current_h;
+	const char* errorStr;
+	SDL_Rect displayBounds;
+
+	SDL_GetDisplayBounds(0, &displayBounds);
+	desktopwidth = displayBounds.w;
+	desktopheight = displayBounds.h;
 
     if (fullscreen)
     {
@@ -867,8 +915,20 @@ static void SetVideoMode(void)
             height = desktopheight;
         }
 
-        screen = SDL_SetVideoMode(width, height, 0,
-                                  SDL_HWSURFACE | SDL_HWPALETTE | SDL_DOUBLEBUF | SDL_FULLSCREEN);
+//#error SDL_SetVideoMode -> change to "SDL_Window *screen = SDL_CreateWindow("My Game Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL); https://wiki.libsdl.org/MigrationGuide
+//        screen = SDL_SetVideoMode(width, height, 0,
+//                                  SDL_HWSURFACE | SDL_HWPALETTE | SDL_DOUBLEBUF | SDL_FULLSCREEN);
+		if ( sdl_window != NULL )
+		{
+			SDL_DestroyWindow( sdl_window );
+		}
+		sdl_window = SDL_CreateWindow(gamedescription,
+										SDL_WINDOWPOS_UNDEFINED,
+										SDL_WINDOWPOS_UNDEFINED,
+										width, height,
+										SDL_WINDOW_FULLSCREEN);
+		screen = SDL_GetWindowSurface(sdl_window);
+		sdl_renderer = SDL_CreateRenderer(sdl_window,-1,SDL_RENDERER_PRESENTVSYNC);
 
         height = screen->h;
         width = height * 4 / 3;
@@ -895,13 +955,21 @@ static void SetVideoMode(void)
         }
 
         SetWindowPositionVars();
-        screen = SDL_SetVideoMode(windowwidth, windowheight, 0,
-                                  SDL_HWSURFACE | SDL_HWPALETTE | SDL_DOUBLEBUF | SDL_RESIZABLE);
+		sdl_window = SDL_CreateWindow(gamedescription,
+										SDL_WINDOWPOS_UNDEFINED,
+										SDL_WINDOWPOS_UNDEFINED,
+										windowwidth, windowheight,
+										SDL_WINDOW_RESIZABLE);
+		screen = SDL_GetWindowSurface( sdl_window );
+		sdl_renderer = SDL_CreateRenderer(sdl_window,-1,SDL_RENDERER_PRESENTVSYNC);
+		//screen = SDL_SetVideoMode(windowwidth, windowheight, 0,
+        //                          SDL_HWSURFACE | SDL_HWPALETTE | SDL_DOUBLEBUF | SDL_RESIZABLE);
 
         widescreen = false;
     }
 
-    screenbuffer = SDL_CreateRGBSurface(SDL_SWSURFACE, width, height, 8, 0, 0, 0, 0);
+	screenbuffer = SDL_CreateRGBSurface(0, width, height, 8, 0, 0, 0, 0);
+	sdl_texture = SDL_CreateTextureFromSurface( sdl_renderer, screenbuffer );
     pitch = screenbuffer->pitch;
     pixels = (byte *)screenbuffer->pixels;
 
@@ -913,6 +981,15 @@ static void SetVideoMode(void)
 
     dest_rect.x = (screen->w - screenbuffer->w) / 2;
     dest_rect.y = (screen->h - screenbuffer->h) / 2;
+
+	//SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
+	//SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");
+	SDL_SetRenderDrawColor(sdl_renderer, 0, 0, 0, 255);
+	SDL_RenderClear(sdl_renderer);
+	SDL_RenderPresent(sdl_renderer);
+
+	errorStr = SDL_GetError();
 }
 
 void ToggleWideScreen(boolean toggle)
@@ -982,8 +1059,20 @@ void ToggleFullScreen(void)
             height = desktopheight;
         }
 
-        screen = SDL_SetVideoMode(width, height, 0,
-                                  SDL_HWSURFACE | SDL_HWPALETTE | SDL_DOUBLEBUF | SDL_FULLSCREEN);
+//#error SDL_SetVideoMode -> change to "SDL_Window *screen = SDL_CreateWindow("My Game Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL); https://wiki.libsdl.org/MigrationGuide
+//        screen = SDL_SetVideoMode(width, height, 0,
+//                                  SDL_HWSURFACE | SDL_HWPALETTE | SDL_DOUBLEBUF | SDL_FULLSCREEN);
+		if ( sdl_window != NULL )
+		{
+			SDL_DestroyWindow( sdl_window );
+		}
+		sdl_window = SDL_CreateWindow(gamedescription,
+										SDL_WINDOWPOS_UNDEFINED,
+										SDL_WINDOWPOS_UNDEFINED,
+										width, height,
+										SDL_WINDOW_FULLSCREEN);
+		screen = SDL_GetWindowSurface(sdl_window);
+
 
         if (screenblocks == 11)
         {
@@ -1042,19 +1131,33 @@ void ToggleFullScreen(void)
         }
 
         SetWindowPositionVars();
-        screen = SDL_SetVideoMode(width, height, 0,
-                                  SDL_HWSURFACE | SDL_HWPALETTE | SDL_DOUBLEBUF | SDL_RESIZABLE);
+//#error SDL_SetVideoMode -> change to "SDL_Window *screen = SDL_CreateWindow("My Game Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL); https://wiki.libsdl.org/MigrationGuide
+//		screen = SDL_SetVideoMode(width, height, 0,
+//                                  SDL_HWSURFACE | SDL_HWPALETTE | SDL_DOUBLEBUF | SDL_RESIZABLE);
+		if ( sdl_window != NULL )
+		{
+			SDL_DestroyWindow( sdl_window );
+		}
+		sdl_window = SDL_CreateWindow(gamestate == GS_LEVEL ? mapnumandtitle : gamedescription,
+										SDL_WINDOWPOS_UNDEFINED,
+										SDL_WINDOWPOS_UNDEFINED,
+										width, height,
+										SDL_WINDOW_RESIZABLE);
+		screen = SDL_GetWindowSurface(sdl_window);
 
         CreateCursors();
         SDL_SetCursor(emptycursor);
 
-        SDL_WM_SetCaption(gamestate == GS_LEVEL ? mapnumandtitle : gamedescription, NULL);
+//#error SDL_WM_SetCaption -> SDL_SetWindowTitle https://wiki.libsdl.org/SDL_SetWindowTitle
+//        SDL_WM_SetCaption(, NULL);
+//		SDL_SetWindowTitle(sdl_window, gamestate == GS_LEVEL ? mapnumandtitle : gamedescription );
 
         currently_grabbed = true;
         UpdateFocus();
         UpdateGrab();
 
-        SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
+		// ao: unnecessary?
+        //SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 
         ev.type = ev_keyup;
         ev.data1 = KEY_RALT;
@@ -1085,8 +1188,11 @@ void ApplyWindowResize(int height)
     windowwidth = windowheight * 4 / 3;
     windowwidth += (windowwidth & 1);
 
-    screen = SDL_SetVideoMode(windowwidth, windowheight, 0,
-                              SDL_HWSURFACE | SDL_HWPALETTE | SDL_DOUBLEBUF | SDL_RESIZABLE);
+//#error SDL_SetVideoMode -> change to "SDL_Window *screen = SDL_CreateWindow("My Game Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL); https://wiki.libsdl.org/MigrationGuide
+//    screen = SDL_SetVideoMode(windowwidth, windowheight, 0,
+//                              SDL_HWSURFACE | SDL_HWPALETTE | SDL_DOUBLEBUF | SDL_RESIZABLE);
+	SDL_SetWindowSize(sdl_window, windowwidth, windowheight);
+	screen = SDL_GetWindowSurface(sdl_window);
 
     screenbuffer = SDL_CreateRGBSurface(SDL_SWSURFACE, windowwidth, windowheight, 8, 0, 0, 0, 0);
     pitch = screenbuffer->pitch;
@@ -1123,6 +1229,7 @@ void I_InitGraphics(void)
     int       i = 0;
     SDL_Event dummy;
     byte      *doompal = (byte *)W_CacheLumpName("PLAYPAL", PU_CACHE);
+	const char* errorStr;
 
     while (i < UCHAR_MAX)
         keys[i++] = true;
@@ -1137,8 +1244,9 @@ void I_InitGraphics(void)
 
     I_InitGammaTables();
 
-    sprintf(envstring, "SDL_VIDEODRIVER=%s", videodriver);
-    putenv(envstring);
+	// ao: SDL_VIDEODRIVER not required any more?
+    //sprintf(envstring, "SDL_VIDEODRIVER=%s", videodriver);
+    //putenv(envstring);
 
     if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0)
         I_Error("Failed to initialize video: %s", SDL_GetError());
@@ -1146,18 +1254,28 @@ void I_InitGraphics(void)
     CreateCursors();
     SDL_SetCursor(emptycursor);
 
-    init_win32(gamemission == doom ? "doom" : "doom2");
-
     SetVideoMode();
+
+    init_win32(gamemission == doom ? "doom" : "doom2");
 
     SDL_EventState(SDL_SYSWMEVENT, SDL_ENABLE);
 
-    SDL_WM_SetCaption(gamedescription, NULL);
+//#error SDL_WM_SetCaption -> SDL_SetWindowTitle https://wiki.libsdl.org/SDL_SetWindowTitle
+//    SDL_WM_SetCaption(gamedescription, NULL);
+	SDL_SetWindowTitle(sdl_window,gamedescription);
 
     SDL_FillRect(screenbuffer, NULL, 0);
 
     I_SetPalette(doompal);
-    SDL_SetColors(screenbuffer, palette, 0, 256);
+    //SDL_SetColors(screenbuffer, palette, 0, 256);
+	SDL_SetPaletteColors(screenbuffer->format->palette, palette, 0, 256);
+	if ( sdl_texture != NULL )
+	{
+		SDL_DestroyTexture( sdl_texture );
+	}
+	sdl_texture = SDL_CreateTextureFromSurface( sdl_renderer, screenbuffer );
+
+	errorStr = SDL_GetError();
 
     UpdateFocus();
     UpdateGrab();
@@ -1166,7 +1284,8 @@ void I_InitGraphics(void)
 
     memset(screens[0], 0, SCREENWIDTH * SCREENHEIGHT);
 
-    SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
+	// ao: unnecessary?
+    //SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 
     while (SDL_PollEvent(&dummy));
 

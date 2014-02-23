@@ -440,12 +440,15 @@ void D_DoAdvanceDemo(void)
 
 //
 // D_StartTitle
-//
+extern SDL_Window *sdl_window;
 void D_StartTitle(void)
 {
     gameaction = ga_nothing;
     demosequence = -1;
-    SDL_WM_SetCaption(gamedescription, NULL);
+//#error SDL_WM_SetCaption -> SDL_SetWindowTitle https://wiki.libsdl.org/SDL_SetWindowTitle
+//    SDL_WM_SetCaption(gamedescription, NULL);
+	// ao: D_StartTitle
+	SDL_SetWindowTitle(sdl_window,gamedescription);
     D_AdvanceDemo();
 }
 

@@ -1782,7 +1782,10 @@ boolean M_Responder(event_t *ev)
     static int keywait = 0;
     static int mousewait = 0;
     char       *tempstring = "";
-    SDLMod     keyMods = SDL_GetModState();
+//#error SDLMod -> SDL_Keymod fix for return of SDL_GetModState
+//    SDLMod     keyMods = SDL_GetModState()
+	// ao: M_Responder and keyMods
+	SDL_Keymod keyMods = SDL_GetModState();
 
     // key is the key pressed, ch is the actual character typed
 

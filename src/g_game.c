@@ -248,7 +248,10 @@ int G_CmdChecksum(ticcmd_t *cmd)
 
 static boolean G_GetSpeedToggle(void)
 {
-    SDLMod modstate = SDL_GetModState();
+//#error SDLMod -> SDL_Keymod fix for return of SDL_GetModState
+//    SDLMod modstate = SDL_GetModState();
+	// ao: G_GetSpeedToggle
+	SDL_Keymod modstate = SDL_GetModState();
     boolean lt = (gamepadbuttons & gamepadspeed);
     boolean caps = (modstate & KMOD_CAPS);
     boolean shift = gamekeydown[key_speed];
@@ -406,6 +409,7 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
 // G_DoLoadLevel
 //
 
+extern SDL_Window *sdl_window;
 void G_DoLoadLevel(void)
 {
     int         i;
@@ -478,7 +482,11 @@ void G_DoLoadLevel(void)
 
     caption = (char *)Z_Malloc(strlen(mapnumandtitle) + 1, PU_STATIC, NULL);
     strcpy(caption, mapnumandtitle);
-    SDL_WM_SetCaption(caption, NULL);
+//#error SDL_WM_SetCaption -> SDL_SetWindowTitle https://wiki.libsdl.org/SDL_SetWindowTitle
+//    SDL_WM_SetCaption(caption, NULL);
+	// ao: G_DoLoadLevel?
+
+	SDL_SetWindowTitle(sdl_window,caption);
     Z_Free(caption);
 
     if (automapactive)

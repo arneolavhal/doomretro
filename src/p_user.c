@@ -163,7 +163,10 @@ void P_DeathThink(player_t *player)
 {
     angle_t        angle;
     angle_t        delta;
-    Uint8          *keystate = SDL_GetKeyState(NULL);
+//#error SDL_GetKeyState() has been renamed to SDL_GetKeyboardState(). The returned array should now be indexed by SDL_SCANCODE_* values (see SDL_Scancode) instead of SDL_Keysym values. https://wiki.libsdl.org/MigrationGuide
+//    Uint8          *keystate = SDL_GetKeyState(NULL);
+	// ao: WI_checkForAccelerate working?
+	const Uint8 *keystate = SDL_GetKeyboardState(NULL);
     static int     count = 0;
     static boolean facingkiller = false;
 
@@ -212,7 +215,7 @@ void P_DeathThink(player_t *player)
 
     if (((player->cmd.buttons & BT_USE) 
         || ((player->cmd.buttons & BT_ATTACK) && !player->damagecount && count > TICRATE * 2)
-        || keystate[SDLK_RETURN]))
+        || keystate[SDL_SCANCODE_RETURN]))
     {
         count = 0;
         vibrationtics = 1;

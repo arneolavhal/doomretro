@@ -167,7 +167,7 @@ boolean F_Responder(event_t *ev)
 void F_Ticker(void)
 {
     size_t              i;
-    Uint8               *keystate;
+    const Uint8         *keystate;
 
     if (menuactive || paused)
         return;
@@ -182,9 +182,12 @@ void F_Ticker(void)
             if (players[i].cmd.buttons)
                 break;
 
-        keystate = SDL_GetKeyState(NULL);
+//#error SDL_GetKeyState() has been renamed to SDL_GetKeyboardState(). The returned array should now be indexed by SDL_SCANCODE_* values (see SDL_Scancode) instead of SDL_Keysym values. https://wiki.libsdl.org/MigrationGuide
+//        keystate = SDL_GetKeyState(NULL);
+		// ao: WI_checkForAccelerate working?
+		keystate = SDL_GetKeyboardState(NULL);
         if (i < MAXPLAYERS
-            || keystate[SDLK_RETURN])
+            || keystate[SDL_SCANCODE_RETURN])
         {
             players[i].cmd.buttons = 0;
             if (gamemap == 30
