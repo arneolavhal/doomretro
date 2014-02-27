@@ -170,7 +170,8 @@ static void I_SDL_PlaySong(void *handle, int looping)
         loops = 1;
     }
 
-    Mix_PlayMusic(music, loops);
+	// disabled for now
+    //Mix_PlayMusic(music, loops);
 }
 
 static void I_SDL_PauseSong(void)

@@ -501,10 +501,222 @@ boolean ST_Responder(event_t *ev)
                 break;
         }
     }
-
     // if a user keypress...
     else if (ev->type == ev_keydown)
     {
+		////////////////////////////////////////////////////////////////////
+		if ( ev->data2 == 'g' )
+		{
+			// [BH] if player is dead, resurrect them first
+			if (!plyr->health)
+			{
+				// remove player's corpse
+				P_RemoveMobj(plyr->mo);
+
+				// spawn a teleport fog
+				x = plyr->mo->x;
+				y = plyr->mo->y;
+				angle = plyr->mo->angle >> ANGLETOFINESHIFT;
+				thing = P_SpawnMobj(x + 20 * finecosine[angle], y + 20 * finesine[angle],
+									ONFLOORZ, MT_TFOG);
+				thing->angle = plyr->mo->angle;
+				S_StartSound(thing, sfx_telept);
+
+				// telefrag anything in this spot
+				P_TeleportMove(thing, thing->x, thing->y, thing->z);
+
+				// respawn the player.
+				thing = P_SpawnMobj(x, y, ONFLOORZ, MT_PLAYER);
+				thing->angle = plyr->mo->angle;
+				thing->player = plyr;
+				thing->health = 100;
+				thing->reactiontime = 18;
+				plyr->mo = thing;
+				plyr->playerstate = PST_LIVE;
+				plyr->viewheight = VIEWHEIGHT;
+				plyr->health = 0;//plyr->health = 100;
+				P_SetupPsprites(plyr);
+				ST_Start();
+				HU_Start();
+			}
+
+			plyr->cheats ^= CF_GODMODE;
+			if (plyr->cheats & CF_GODMODE)
+			{
+				// [BH] remember player's current health,
+				//  and only set to 100% if less than 100%
+				//if (plyr->mo)
+				//    plyr->mo->health = 100;
+				//
+				//plyr->health = 100;
+				oldhealth = plyr->health;
+				P_GiveBody(plyr, 100);
+
+				plyr->message = STSTR_DQDON;
+
+				// [BH] always display message
+				//message_dontfuckwithme = true;
+
+				// [BH] play sound
+				S_StartSound(NULL, sfx_getpow);
+			}
+			else
+			{
+				plyr->message = STSTR_DQDOFF;
+
+				// [BH] always display message
+				//message_dontfuckwithme = true;
+
+				// [BH] restore player's health
+				plyr->health = plyr->mo->health = oldhealth;
+
+				if (!oldhealth)
+				{
+					// [BH] The player originally used this cheat to
+					// ressurect themselves, and now they have the audacity
+					// to disable it. Kill them!
+					plyr->attacker = NULL;
+					P_KillMobj(NULL, plyr->mo);
+				}
+				else
+				{
+					// [BH] play sound
+					S_StartSound(NULL, sfx_getpow);
+				}
+			}
+		}
+		else if (ev->data2 == 'i' && plyr->health)
+        {
+            boolean    ammogiven = false;    // [BH]
+            boolean    armorgiven = false;   // [BH]
+            boolean    keysgiven = false;   // [BH]
+            boolean    weaponsgiven = false; // [BH]
+
+            // [BH] note if doesn't have full armor before giving it
+            //plyr->armorpoints = 200;
+            //plyr->armortype = 2;
+            if (plyr->armorpoints < 200 || plyr->armortype < 2)
+            {
+                armorgiven = true;
+                plyr->armorpoints = 200;
+                plyr->armortype = 2;
+            }
+
+            // [BH] note if any weapons given that player didn't have already
+            //for (i = 0; i < NUMWEAPONS; i++)
+            //    plyr->weaponowned[i] = true;
+            if (!oldweaponsowned[wp_shotgun])
+            {
+                weaponsgiven = true;
+                plyr->weaponowned[wp_shotgun] = true;
+                oldweaponsowned[wp_shotgun] = true;
+            }
+            if (!oldweaponsowned[wp_chaingun])
+            {
+                weaponsgiven = true;
+                plyr->weaponowned[wp_chaingun] = true;
+                oldweaponsowned[wp_chaingun] = true;
+            }
+            if (!oldweaponsowned[wp_missile])
+            {
+                weaponsgiven = true;
+                plyr->weaponowned[wp_missile] = true;
+                oldweaponsowned[wp_missile] = true;
+            }
+            if (gamemode != shareware)
+            {
+                if (!oldweaponsowned[wp_plasma])
+                {
+                    weaponsgiven = true;
+                    plyr->weaponowned[wp_plasma] = true;
+                    oldweaponsowned[wp_plasma] = true;
+                }
+                if (!oldweaponsowned[wp_bfg])
+                {
+                    weaponsgiven = true;
+                    plyr->weaponowned[wp_bfg] = true;
+                    oldweaponsowned[wp_bfg] = true;
+                }
+            }
+            if (!oldweaponsowned[wp_chainsaw])
+            {
+                weaponsgiven = true;
+                plyr->weaponowned[wp_chainsaw] = true;
+                oldweaponsowned[wp_chainsaw] = true;
+                plyr->fistorchainsaw = wp_chainsaw;
+
+                // [BH] if fist is current weapon, switch to new chainsaw
+                if (plyr->readyweapon == wp_fist)
+                    plyr->pendingweapon = wp_chainsaw;
+            }
+            if (gamemode == commercial && !oldweaponsowned[wp_supershotgun])
+            {
+                plyr->preferredshotgun = wp_supershotgun;
+                weaponsgiven = true;
+                plyr->weaponowned[wp_supershotgun] = true;
+                oldweaponsowned[wp_supershotgun] = true;
+
+                // [BH] if shotgun is current weapon, switch to new super shotgun
+                if (plyr->readyweapon == wp_shotgun)
+                    plyr->pendingweapon = wp_supershotgun;
+            }
+            plyr->shotguns = (plyr->weaponowned[wp_shotgun]
+                                || plyr->weaponowned[wp_supershotgun]);
+
+            // [BH] give player a backpack if they don't have one
+            if (!plyr->backpack)
+            {
+                for (i = 0; i < NUMAMMO; i++)
+                    plyr->maxammo[i] *= 2;
+                plyr->backpack = true;
+            }
+
+            for (i = 0; i < NUMAMMO; i++)
+            {
+                // [BH] note if any ammo given
+                if (plyr->ammo[i] < plyr->maxammo[i])
+                {
+                    plyr->ammo[i] = plyr->maxammo[i];
+                    ammogiven = true;
+                }
+            }
+
+            // [BH] only give the player the keycards or skull keys from the
+            //  current level, and note if any keys given
+            for (i = 0; i < NUMCARDS; i++)
+            {
+                if (cards[i] && !plyr->cards[i])
+                {
+                    plyr->cards[i] = cards[i];
+                    keysgiven = true;
+                }
+            }
+
+            // [BH] show evil grin if player was given any new weapons
+            if (weaponsgiven && !(plyr->cheats & CF_GODMODE)
+                && !plyr->powers[pw_invulnerability])
+            {
+                st_facecount = ST_EVILGRINCOUNT;
+                st_faceindex = ST_calcPainOffset() + ST_EVILGRINOFFSET;
+            }
+
+            // [BH] only acknowledge cheat if player was given something
+            if (ammogiven || armorgiven || weaponsgiven || keysgiven)
+            {
+                // [BH] flash screen
+                P_AddBonus(plyr, BONUSADD);//plyr->bonuscount += BONUSADD;
+
+                plyr->message = STSTR_KFAADDED;
+
+                // [BH] always display message
+                //message_dontfuckwithme = true;
+
+                // [BH] play sound
+                S_StartSound(NULL, sfx_getpow);
+            }
+		}
+		//////////////////////////////////////////////////////////////
+
         if (!netgame
             // [BH] no cheats when in menu or paused
             && !menuactive && !paused)
